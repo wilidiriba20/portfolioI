@@ -8,6 +8,7 @@ import {
 } from "../data/portfolio";
 
 /* ---------------- SAFE FALLBACKS ---------------- */
+const safeProfile = profile || {};
 const safeSkills = Array.isArray(skills) ? skills : [];
 const safeProjects = Array.isArray(projects) ? projects : [];
 const safeCertifications = Array.isArray(certifications) ? certifications : [];
@@ -45,9 +46,12 @@ const TERM_DATA = {
       cls: "text-[#5143ee] font-semibold",
       t: "┌── PROFILE ──────────────────────────┐",
     },
-    { cls: "text-zinc-200", t: ` │ Name     : ${profile?.name || "N/A"}` },
-    { cls: "text-zinc-200", t: ` │ Role     : ${profile?.role || "N/A"}` },
-    { cls: "text-zinc-400", t: ` │ Focus    : ${profile?.tagline || "N/A"}` },
+    { cls: "text-zinc-200", t: ` │ Name     : ${safeProfile.name || "N/A"}` },
+    { cls: "text-zinc-200", t: ` │ Role     : ${safeProfile.role || "N/A"}` },
+    {
+      cls: "text-zinc-400",
+      t: ` │ Focus    : ${safeProfile.tagline || "N/A"}`,
+    },
     {
       cls: "text-[#5143ee] font-semibold",
       t: "└─────────────────────────────────────┘",
@@ -96,9 +100,12 @@ const TERM_DATA = {
       cls: "text-[#5143ee] font-semibold",
       t: "┌── ROUTING CHANNELS ─────────────────┐",
     },
-    { cls: "text-zinc-200", t: ` │ Email    : ${profile?.email || "N/A"}` },
-    { cls: "text-zinc-200", t: ` │ GitHub   : ${profile?.github || "N/A"}` },
-    { cls: "text-zinc-200", t: ` │ LinkedIn : ${profile?.linkedin || "N/A"}` },
+    { cls: "text-zinc-200", t: ` │ Email    : ${safeProfile.email || "N/A"}` },
+    { cls: "text-zinc-200", t: ` │ GitHub   : ${safeProfile.github || "N/A"}` },
+    {
+      cls: "text-zinc-200",
+      t: ` │ LinkedIn : ${safeProfile.linkedin || "N/A"}`,
+    },
     {
       cls: "text-[#5143ee] font-semibold",
       t: "└─────────────────────────────────────┘",
@@ -123,7 +130,6 @@ const TERM_DATA = {
       cls: "text-[#5143ee] font-semibold",
       t: "┌── CERTIFICATIONS ───────────────────┐",
     },
-
     ...safeCertifications.flatMap((cert, i) => [
       {
         cls: "text-zinc-100 font-medium",
@@ -136,7 +142,6 @@ const TERM_DATA = {
         : []),
       { cls: "", t: "" },
     ]),
-
     {
       cls: "text-zinc-500",
       t: ` [OK] ${safeCertifications.length} certifications loaded successfully.`,
@@ -148,7 +153,6 @@ const TERM_DATA = {
   ],
 };
 
-/* ---------------- COMPONENT ---------------- */
 export default function DeveloperMode({ onExit }) {
   const [lines, setLines] = useState([]);
   const [input, setInput] = useState("");
@@ -163,7 +167,7 @@ export default function DeveloperMode({ onExit }) {
     }
   }, []);
 
-  /* BOOT SEQUENCE FIXED */
+  /* BOOT SEQUENCE */
   useEffect(() => {
     if (booted.current) return;
     booted.current = true;
@@ -174,11 +178,7 @@ export default function DeveloperMode({ onExit }) {
         clearInterval(timer);
         return;
       }
-
-      // Safeguard against pushing undefined values into state
-      if (BOOT_LINES[i]) {
-        setLines((prev) => [...prev, BOOT_LINES[i]]);
-      }
+      setLines((prev) => [...prev, BOOT_LINES[i]]);
       i++;
       scrollBottom();
     }, 40);
@@ -192,14 +192,14 @@ export default function DeveloperMode({ onExit }) {
 
   useEffect(scrollBottom, [lines, scrollBottom]);
 
-  /* COMMAND RUNNER */
+  /* SAFE COMMAND RUNNER */
   const runCommand = (cmd) => {
     const key = (cmd || "").trim().toLowerCase();
     if (!key) return;
 
     setLines((prev) => [
       ...prev,
-      { cls: "text-zinc-500", t: `guest@wili-portfolio:~$ ${cmd.trim()}` },
+      { cls: "text-zinc-500", t: `guest@wili-portfolio:~$ ${key}` },
     ]);
 
     if (key === "clear") {
@@ -212,17 +212,15 @@ export default function DeveloperMode({ onExit }) {
       return;
     }
 
-    if (TERM_DATA[key]) {
+    // FIXED: Strict structural lookup protection
+    if (Object.prototype.hasOwnProperty.call(TERM_DATA, key)) {
       setLines((prev) => [...prev, ...TERM_DATA[key], { cls: "", t: "" }]);
       return;
     }
 
     setLines((prev) => [
       ...prev,
-      {
-        cls: "text-rose-400 text-xs my-1",
-        t: `❌ Command '${key}' unknown.`,
-      },
+      { cls: "text-rose-400 text-xs my-1", t: `❌ Command '${key}' unknown.` },
       { cls: "", t: "" },
     ]);
   };
@@ -235,8 +233,8 @@ export default function DeveloperMode({ onExit }) {
 
     if (e.key === "Tab") {
       e.preventDefault();
-      const match = safeCommands.find((c) =>
-        c.toLowerCase().startsWith(input.toLowerCase()),
+      const match = safeCommands.find(
+        (c) => c && String(c).toLowerCase().startsWith(input.toLowerCase()),
       );
       if (match) setInput(match);
     }
@@ -249,10 +247,9 @@ export default function DeveloperMode({ onExit }) {
         <span className="flex-1 text-center font-mono text-xs text-zinc-500">
           session://guest@wili-portfolio:bash
         </span>
-
         <button
           onClick={onExit}
-          className="px-4 py-1.5 text-xs border border-zinc-800 rounded-xl text-zinc-400 hover:text-white transition-colors"
+          className="px-4 py-1.5 text-xs border border-zinc-800 rounded-xl text-zinc-400 hover:text-white"
         >
           Exit Shell
         </button>
@@ -265,8 +262,8 @@ export default function DeveloperMode({ onExit }) {
         onClick={() => inputRef.current?.focus()}
       >
         {lines.map((line, i) => (
-          <div key={i} className={line.cls}>
-            {line.t || "\u00A0"}
+          <div key={i} className={line?.cls || ""}>
+            {line?.t || "\u00A0"}
           </div>
         ))}
 
@@ -274,7 +271,6 @@ export default function DeveloperMode({ onExit }) {
           <span className="text-[#5143ee] font-semibold">
             guest@wili-portfolio:~$
           </span>
-
           <input
             ref={inputRef}
             value={input}
@@ -301,7 +297,7 @@ export default function DeveloperMode({ onExit }) {
           <button
             key={cmd}
             onClick={() => runCommand(cmd)}
-            className="px-3 py-1 text-xs border border-zinc-800 rounded-lg text-zinc-400 hover:bg-zinc-800/30 transition-colors"
+            className="px-3 py-1 text-xs border border-zinc-800 rounded-lg text-zinc-400 hover:bg-zinc-800/20 transition-colors"
           >
             {cmd}
           </button>
