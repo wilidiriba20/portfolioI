@@ -150,11 +150,153 @@ const TERM_DATA = {
 
 /* ---------------- COMPONENT ---------------- */
 export default function DeveloperMode({ onExit }) {
+  const [lines, setLines] = useState([]);
+  const [input, setInput] = useState("");
+
+  const bodyRef = useRef(null);
+  const inputRef = useRef(null);
+  const booted = useRef(false);
+
+  const scrollBottom = useCallback(() => {
+    if (bodyRef.current) {
+      bodyRef.current.scrollTop = bodyRef.current.scrollHeight;
+    }
+  }, []);
+
+  /* BOOT SEQUENCE */
+  useEffect(() => {
+    if (booted.current) return;
+    booted.current = true;
+
+    let i = 0;
+    const timer = setInterval(() => {
+      if (i >= BOOT_LINES.length) return clearInterval(timer);
+
+      setLines((prev) => [...prev, BOOT_LINES[i]]);
+      i++;
+      scrollBottom();
+    }, 40);
+
+    return () => clearInterval(timer);
+  }, [scrollBottom]);
+
+  useEffect(() => {
+    inputRef.current?.focus();
+  }, []);
+
+  useEffect(scrollBottom, [lines, scrollBottom]);
+
+  /* COMMAND RUNNER */
+  const runCommand = (cmd) => {
+    const key = (cmd || "").trim().toLowerCase();
+    if (!key) return;
+
+    setLines((prev) => [
+      ...prev,
+      { cls: "text-zinc-500", t: `guest@wili-portfolio:~$ ${key}` },
+    ]);
+
+    if (key === "clear") {
+      setLines([]);
+      return;
+    }
+
+    if (key === "exit") {
+      onExit?.();
+      return;
+    }
+
+    if (TERM_DATA[key]) {
+      setLines((prev) => [...prev, ...TERM_DATA[key], { cls: "", t: "" }]);
+      return;
+    }
+
+    setLines((prev) => [
+      ...prev,
+      {
+        cls: "text-rose-400 text-xs my-1",
+        t: `❌ Command '${key}' unknown.`,
+      },
+      { cls: "", t: "" },
+    ]);
+  };
+
+  const handleKeyDown = (e) => {
+    if (e.key === "Enter") {
+      runCommand(input);
+      setInput("");
+    }
+
+    if (e.key === "Tab") {
+      e.preventDefault();
+      const match = safeCommands.find((c) => c.startsWith(input.toLowerCase()));
+      if (match) setInput(match);
+    }
+  };
+
   return (
-    <div style={{ color: "white", background: "black", height: "100vh" }}>
-      Developer Mode Working
-      <button onClick={onExit}>Exit</button>
+    <div className="fixed inset-0 z-50 flex flex-col bg-[#101727] text-zinc-300 select-none">
+      {/* HEADER */}
+      <div className="flex items-center gap-3 border-b border-zinc-800/80 bg-[#0b101c] px-5 py-3.5">
+        <span className="flex-1 text-center font-mono text-xs text-zinc-500">
+          session://guest@wili-portfolio:bash
+        </span>
+
+        <button
+          onClick={onExit}
+          className="px-4 py-1.5 text-xs border border-zinc-800 rounded-xl text-zinc-400 hover:text-white"
+        >
+          Exit Shell
+        </button>
+      </div>
+
+      {/* BODY */}
+      <div
+        ref={bodyRef}
+        className="flex-1 overflow-y-auto p-6 font-mono text-sm"
+        onClick={() => inputRef.current?.focus()}
+      >
+        {lines.map((line, i) => (
+          <div key={i} className={line.cls}>
+            {line.t || "\u00A0"}
+          </div>
+        ))}
+
+        <div className="flex mt-2">
+          <span className="text-[#5143ee] font-semibold">
+            guest@wili-portfolio:~$
+          </span>
+
+          <input
+            ref={inputRef}
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={handleKeyDown}
+            className="flex-1 bg-transparent outline-none text-white ml-2"
+          />
+        </div>
+      </div>
+
+      {/* QUICK BUTTONS */}
+      <div className="border-t border-zinc-800 bg-[#0b101c] p-3 flex gap-2 flex-wrap">
+        {[
+          "help",
+          "about",
+          "skills",
+          "projects",
+          "certifications",
+          "contact",
+          "clear",
+        ].map((cmd) => (
+          <button
+            key={cmd}
+            onClick={() => runCommand(cmd)}
+            className="px-3 py-1 text-xs border border-zinc-800 rounded-lg text-zinc-400"
+          >
+            {cmd}
+          </button>
+        ))}
+      </div>
     </div>
   );
 }
-
