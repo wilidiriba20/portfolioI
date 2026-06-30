@@ -163,16 +163,22 @@ export default function DeveloperMode({ onExit }) {
     }
   }, []);
 
-  /* BOOT SEQUENCE */
+  /* BOOT SEQUENCE FIXED */
   useEffect(() => {
     if (booted.current) return;
     booted.current = true;
 
     let i = 0;
     const timer = setInterval(() => {
-      if (i >= BOOT_LINES.length) return clearInterval(timer);
+      if (i >= BOOT_LINES.length) {
+        clearInterval(timer);
+        return;
+      }
 
-      setLines((prev) => [...prev, BOOT_LINES[i]]);
+      // Safeguard against pushing undefined values into state
+      if (BOOT_LINES[i]) {
+        setLines((prev) => [...prev, BOOT_LINES[i]]);
+      }
       i++;
       scrollBottom();
     }, 40);
@@ -193,7 +199,7 @@ export default function DeveloperMode({ onExit }) {
 
     setLines((prev) => [
       ...prev,
-      { cls: "text-zinc-500", t: `guest@wili-portfolio:~$ ${key}` },
+      { cls: "text-zinc-500", t: `guest@wili-portfolio:~$ ${cmd.trim()}` },
     ]);
 
     if (key === "clear") {
@@ -229,7 +235,9 @@ export default function DeveloperMode({ onExit }) {
 
     if (e.key === "Tab") {
       e.preventDefault();
-      const match = safeCommands.find((c) => c.startsWith(input.toLowerCase()));
+      const match = safeCommands.find((c) =>
+        c.toLowerCase().startsWith(input.toLowerCase()),
+      );
       if (match) setInput(match);
     }
   };
@@ -244,7 +252,7 @@ export default function DeveloperMode({ onExit }) {
 
         <button
           onClick={onExit}
-          className="px-4 py-1.5 text-xs border border-zinc-800 rounded-xl text-zinc-400 hover:text-white"
+          className="px-4 py-1.5 text-xs border border-zinc-800 rounded-xl text-zinc-400 hover:text-white transition-colors"
         >
           Exit Shell
         </button>
@@ -273,6 +281,8 @@ export default function DeveloperMode({ onExit }) {
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
             className="flex-1 bg-transparent outline-none text-white ml-2"
+            autoComplete="off"
+            spellCheck="false"
           />
         </div>
       </div>
@@ -291,7 +301,7 @@ export default function DeveloperMode({ onExit }) {
           <button
             key={cmd}
             onClick={() => runCommand(cmd)}
-            className="px-3 py-1 text-xs border border-zinc-800 rounded-lg text-zinc-400"
+            className="px-3 py-1 text-xs border border-zinc-800 rounded-lg text-zinc-400 hover:bg-zinc-800/30 transition-colors"
           >
             {cmd}
           </button>
